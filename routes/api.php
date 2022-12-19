@@ -16,5 +16,7 @@ use App\Http\Controllers\BlobsController;
 */
 
 Route::prefix('/v2/')->group(function(){
-    Route::post('/{container_ref}/blobs/uploads', [BlobsController::class, 'initiateUpload']);
+    Route::post('/{container_ref}/blobs/uploads', [BlobsController::class, 'initiateUpload'])->name('blobs.init_upload');
+    Route::patch('/{container_ref}/blobs/uploads/{pending_container_layer}', [BlobsController::class, 'processPartialUpload'])
+        ->name('blobs.process_upload');
 });
