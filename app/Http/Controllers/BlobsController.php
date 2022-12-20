@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Storage;
 
 class BlobsController extends Controller
@@ -17,14 +18,17 @@ class BlobsController extends Controller
         }
 
         $file_size = $storage->size($blob_location);
+        $file_stream_handle = $storage->readStream($blob_location);
         $hash = hash_file('sha256', $storage->path($blob_location));
 
-        return response()->file(
-            $storage->path($blob_location),
-            [
-                'Docker-Content-Digest' => "sha256:$hash",
-                'Content-Length' => $file_size
-            ]
-        );
+        return Response::stream(function() use($file_stream_handle){
+            while(!feof($file_stream_handle)){
+                echo fgets($file_stream_handle, 16*1024);
+                flush();
+            }
+        }, 200, [
+            'Docker-Content-Digest' => "sha256:$hash",
+            'Content-Length' => $file_size
+        ]);
     }
 }
