@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BlobsController;
+use App\Http\Controllers\ManifestsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UploadsController;
@@ -22,4 +23,6 @@ Route::prefix('/v2/')->group(function(){
     Route::put('/{container_ref}/blobs/uploads/{pending_container_layer}', [UploadsController::class, 'process_partial_update']);
 
     Route::get('/{container_ref}/blobs/{blob_ref}', [BlobsController::class, 'get_blob'])->name('blobs.get');
+    Route::put('/{container_ref}/manifests/{manifest_ref}', [ManifestsController::class, 'upload_manifest'])->name('manifests.put');
+    Route::get('/{container_ref}/manifests/{manifest_ref}', [ManifestsController::class, 'get_manifest'])->name('manifests.get');
 });
