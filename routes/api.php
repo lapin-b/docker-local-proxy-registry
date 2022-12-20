@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BlobsController;
 use App\Http\Controllers\ManifestsController;
+use App\Http\Controllers\RegistryBaseController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UploadsController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\UploadsController;
 */
 
 Route::prefix('/v2/')->group(function(){
+    Route::get('/', [RegistryBaseController::class, 'base']);
     Route::post('/{container_ref}/blobs/uploads', [UploadsController::class, 'initiateUpload'])->name('blobs.init_upload');
     Route::patch('/{container_ref}/blobs/uploads/{pending_container_layer}', [UploadsController::class, 'process_partial_update'])->name('blobs.process_upload');
     Route::put('/{container_ref}/blobs/uploads/{pending_container_layer}', [UploadsController::class, 'process_partial_update']);
