@@ -23,7 +23,7 @@ class BlobsController extends Controller
 
         return Response::stream(function() use($file_stream_handle){
             while(!feof($file_stream_handle)){
-                echo fgets($file_stream_handle, 16*1024);
+                echo fgets($file_stream_handle, 64*1024);
                 flush();
             }
         }, 200, [
