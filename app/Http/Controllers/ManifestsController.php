@@ -62,8 +62,8 @@ class ManifestsController extends Controller
 
         return response()
             ->file($storage->path($manifest_ref_file), [
-                    'Docker-Content-Digest' => $metadata->docker_hash
+                    'Docker-Content-Digest' => $metadata->docker_hash,
+                    'Content-Type' => $metadata->content_type
                 ]);
-
     }
 }
