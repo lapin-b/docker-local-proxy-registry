@@ -47,6 +47,9 @@ class UploadsController extends Controller
         $fs->makeDirectory($upload_root);
         $absolute_upload_path = $fs->path($upload_path);
 
+        // We need to bypass the Storage abstraction because calling "append"
+        // on it causes the original file to be read, then written back. Silly,
+        // I know.
         $temporary_upload_file = fopen($absolute_upload_path, 'a');
         stream_copy_to_stream($body, $temporary_upload_file);
         $file_size = $fs->size($upload_path);

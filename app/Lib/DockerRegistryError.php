@@ -12,6 +12,8 @@ class DockerRegistryError implements JsonSerializable
 
     const ERR_INVALID_TAG = 'TAG_INVALID';
     const ERR_INVALID_NAME = 'NAME_INVALID';
+    const ERR_UNKNOWN_NAME = 'NAME_UNKNOWN';
+    const ERR_UNKNOWN_BLOB = 'BLOB_UNKNOWN';
 
     public string $code;
     public string $message;
@@ -34,6 +36,21 @@ class DockerRegistryError implements JsonSerializable
         return new self(
             self::ERR_INVALID_NAME,
             "Container name [$namespace] is invalid"
+        );
+    }
+
+    public static function unknown_manifest(string $manifest, string $container): self {
+        return new self(
+            self::ERR_UNKNOWN_NAME,
+            "Manifest [$manifest] in [$container] does not exist"
+        );
+    }
+
+    public static function unknown_blob($blob_ref, $container_ref)
+    {
+        return new self(
+            self::ERR_UNKNOWN_BLOB,
+            "Blob [$blob_ref] in [$container_ref] does not exist"
         );
     }
 

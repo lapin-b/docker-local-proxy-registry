@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Lib\DockerRegistryError;
+use App\Lib\DockerRegistryErrorBag;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Storage;
@@ -14,7 +16,7 @@ class BlobsController extends Controller
 
         if($storage->fileMissing($blob_location)){
             // TODO: Return proper Docker response
-            return response('', 404);
+            return response(new DockerRegistryErrorBag(DockerRegistryError::unknown_blob($blob_ref, $container_ref)), 404);
         }
 
         $file_size = $storage->size($blob_location);
@@ -28,7 +30,8 @@ class BlobsController extends Controller
             }
         }, 200, [
             'Docker-Content-Digest' => "sha256:$hash",
-            'Content-Length' => $file_size
+            'Content-Length' => $file_size,
+            'Content-Type' => 'application/octet-stream'
         ]);
     }
 }

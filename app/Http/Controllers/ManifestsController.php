@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Lib\DockerRegistryError;
+use App\Lib\DockerRegistryErrorBag;
 use App\Models\ManifestMetadata;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -53,7 +55,7 @@ class ManifestsController extends Controller
         $storage = Storage::disk('local');
 
         if($storage->fileMissing($manifest_ref_file)){
-            abort(404);
+            return response(new DockerRegistryErrorBag(DockerRegistryError::unknown_manifest($manifest_ref, $container_ref)), 404);
         }
 
         $metadata = ManifestMetadata::where('manifest_reference', $manifest_ref)
@@ -63,7 +65,7 @@ class ManifestsController extends Controller
         return response()
             ->file($storage->path($manifest_ref_file), [
                     'Docker-Content-Digest' => $metadata->docker_hash,
-                    'Content-Type' => $metadata->content_type
+                    'Content-Type' => $metadata->content_type,
                 ]);
     }
 }
