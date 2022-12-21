@@ -6,6 +6,7 @@ use App\Models\PendingContainerLayer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use League\Flysystem\MountManager;
 use Ulid\Ulid;
 
 class UploadsController extends Controller
@@ -56,19 +57,28 @@ class UploadsController extends Controller
 
         if($request->method() == 'PUT') {
             $docker_hash = $request->query('digest');
+            $s3 = Storage::disk('s3');
 
-            $final_storage_directory = "repository/$pending_container_layer->container_reference/blobs";
-            $fs->makeDirectory($final_storage_directory);
-            $fs->move($upload_path, $final_storage_directory . '/' . $docker_hash);
+            $final_storage_path = "repository/$pending_container_layer->container_reference/blobs/$docker_hash";
+            $mount_manager = new MountManager([
+                's3' => Storage::disk('s3')->getDriver(),
+                'local' => Storage::disk('local')->getDriver()
+            ]);
+            $mount_manager->move('local://' . $upload_path, 's3://' . $final_storage_path);
 
             $pending_container_layer->delete();
 
             return response('', 201)
-                ->header('Location', route('blobs.get', [
-                    'container_ref' => $container_ref,
-                    'blob_ref' => $docker_hash
-                ]))
-                ->header('Docker-Content-Digest', $docker_hash);
+                ->header(
+                    'Location',
+                    $s3->temporaryUrl(
+                        $final_storage_path,
+                        now()->addMinutes(5),
+                        [
+                            'Docker-Content-Digest' => $docker_hash
+                        ]
+                    )
+                );
         }
 
         return response('', 202)
