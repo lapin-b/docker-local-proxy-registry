@@ -35,15 +35,5 @@ class BlobsController extends Controller
                 ]
             ), 307
         );
-//        return Response::stream(function() use($file_stream_handle){
-//            while(!feof($file_stream_handle)){
-//                echo fgets($file_stream_handle, 64*1024);
-//                flush();
-//            }
-//        }, 200, [
-//            'Docker-Content-Digest' => "sha256:$hash",
-//            'Content-Length' => $file_size,
-//            'Content-Type' => 'application/octet-stream'
-//        ]);
     }
 }

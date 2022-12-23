@@ -82,7 +82,29 @@ class UploadsController extends Controller
         }
 
         return response('', 202)
+            ->header(
+                'Location',
+                route('blobs.process_upload', compact('pending_container_layer', 'container_ref'))
+            )
             ->header('Range', "0-$file_size")
             ->header('Docker-Upload-UUID', $pending_container_layer->id);
+    }
+
+    public function cancel_upload(
+        Request $request,
+        string $container_ref,
+        string $upload_ref
+    ){
+        $pending_container_layer = PendingContainerLayer::findOrFail($upload_ref);
+        if($pending_container_layer->container_reference != $container_ref){
+            return response('', 403);
+        }
+
+        $upload_path = 'uploads/' . $pending_container_layer->id;
+        $fs = Storage::disk('local');
+        $fs->delete($upload_path);
+        $pending_container_layer->delete();
+
+        return response('', 200);
     }
 }
