@@ -8,6 +8,7 @@ use App\Models\ManifestMetadata;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Response;
 
 class ManifestsController extends Controller
 {
@@ -16,13 +17,11 @@ class ManifestsController extends Controller
         $file_hash = hash('sha256', $manifest_content);
         $manifest_hash_file = "repository/$container_ref/manifests/sha256:$file_hash";
         $manifest_ref_file = "repository/$container_ref/manifests/$manifest_ref";
-        $manifest_directory = dirname($manifest_hash_file);
 
         // Écrire le manifeste dans le fichier
-        $storage = Storage::drive('local');
-        $storage->makeDirectory($manifest_directory);
+        $storage = Storage::drive('s3');
         $storage->put($manifest_hash_file, $manifest_content);
-        $file_size = $storage->size($manifest_hash_file);
+        $file_size = strlen($manifest_content);
 
         $insert_values = [
             'docker_hash' => "sha256:$file_hash",
@@ -52,7 +51,7 @@ class ManifestsController extends Controller
 
     public function get_manifest(Request $request, string $container_ref, string $manifest_ref) {
         $manifest_ref_file = "repository/$container_ref/manifests/$manifest_ref";
-        $storage = Storage::disk('local');
+        $storage = Storage::disk('s3');
 
         if($storage->fileMissing($manifest_ref_file)){
             return response(new DockerRegistryErrorBag(DockerRegistryError::unknown_manifest($manifest_ref, $container_ref)), 404);
@@ -62,10 +61,9 @@ class ManifestsController extends Controller
             ->where('container_reference', $container_ref)
             ->firstOrFail();
 
-        return response()
-            ->file($storage->path($manifest_ref_file), [
-                    'Docker-Content-Digest' => $metadata->docker_hash,
-                    'Content-Type' => $metadata->content_type,
-                ]);
+        return response($storage->get($manifest_ref_file))
+            ->header('Docker-Content-Digest', $metadata->docker_hash)
+            ->header('Content-Length', $metadata->filesize)
+            ->header('Content-Type', $metadata->content_type);
     }
 }
