@@ -14,7 +14,7 @@ return new class extends Migration
     public function up()
     {
         Schema::create('pending_container_layers', function (Blueprint $table) {
-            $table->string('id');
+            $table->ulid('id');
             $table->string('container_reference');
             $table->timestamps();
 
