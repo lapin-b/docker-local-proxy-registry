@@ -7,18 +7,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use League\Flysystem\MountManager;
-use Ulid\Ulid;
 
 class UploadsController extends Controller
 {
     public function initiateUpload(Request $request, string $container_ref){
         if($request->query('digest') != null){
-            return response('Monolithic uploads are not implemented', 501);
+            return response('Monolithic uploads are not supported', 501);
         }
 
-        $pending_container_layer = new PendingContainerLayer();
-        $pending_container_layer->id = Ulid::generate();
-        $pending_container_layer->container_reference = $container_ref;
+        $pending_container_layer = PendingContainerLayer::create([
+            'container_reference' => $container_ref,
+        ]);
+        $pending_container_layer->rel_upload_path = "uploads/$pending_container_layer->id";
         $pending_container_layer->save();
 
         return response('', 202)
@@ -40,20 +40,16 @@ class UploadsController extends Controller
             return response('', 403);
         }
 
-        $upload_path = 'uploads/' . $pending_container_layer->id;
-        $upload_root = dirname($upload_path);
-
         $body = $request->getContent(true);
         $fs = Storage::disk('local');
-        $fs->makeDirectory($upload_root);
-        $absolute_upload_path = $fs->path($upload_path);
+        $fs->makeDirectory(dirname($pending_container_layer->rel_upload_path));
+        $absolute_upload_path = $fs->path($pending_container_layer->rel_upload_path);
 
         // We need to bypass the Storage abstraction because calling "append"
         // on it causes the original file to be read, then written back. Silly,
         // I know.
         $temporary_upload_file = fopen($absolute_upload_path, 'a');
         stream_copy_to_stream($body, $temporary_upload_file);
-        $file_size = $fs->size($upload_path);
 
         if($request->method() == 'PUT') {
             $docker_hash = $request->query('digest');
@@ -64,8 +60,10 @@ class UploadsController extends Controller
                 's3' => Storage::disk('s3')->getDriver(),
                 'local' => Storage::disk('local')->getDriver()
             ]);
-            $mount_manager->move('local://' . $upload_path, 's3://' . $final_storage_path);
-
+            $mount_manager->move(
+                'local://' . $pending_container_layer->rel_upload_path,
+                's3://' . $final_storage_path
+            );
             $pending_container_layer->delete();
 
             return response('', 201)
@@ -74,12 +72,12 @@ class UploadsController extends Controller
                     $s3->temporaryUrl(
                         $final_storage_path,
                         now()->addMinutes(5),
-                        [
-                            'Docker-Content-Digest' => $docker_hash
-                        ]
                     )
-                );
+                )
+                ->header('Docker-Content-Digest', $docker_hash);
         }
+
+        $file_size = $fs->size($pending_container_layer->rel_upload_path);
 
         return response('', 202)
             ->header(

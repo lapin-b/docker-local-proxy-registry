@@ -21,11 +21,13 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|PendingContainerLayer whereId($value)
  * @method static \Illuminate\Database\Eloquent\Builder|PendingContainerLayer whereUpdatedAt($value)
  * @mixin \Eloquent
+ * @property string $rel_upload_path
+ * @method static \Illuminate\Database\Eloquent\Builder|PendingContainerLayer whereRelUploadPath($value)
  */
 class PendingContainerLayer extends Model
 {
     use HasFactory;
     use HasUlids;
     public $incrementing = false;
-    protected $fillable = ['container_reference'];
+    protected $fillable = ['container_reference', 'rel_upload_path'];
 }
