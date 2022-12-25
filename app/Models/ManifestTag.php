@@ -26,9 +26,14 @@ use Illuminate\Database\Eloquent\Model;
  * @mixin \Eloquent
  * @property string $tag
  * @method static \Illuminate\Database\Eloquent\Builder|ManifestTag whereTag($value)
+ * @property-read \App\Models\ManifestMetadata $manifest_metadata
  */
 class ManifestTag extends Model
 {
     use HasFactory;
     protected $guarded = ['id', 'manifest_metadata_id'];
+
+    public function manifest_metadata(){
+        return $this->belongsTo(ManifestMetadata::class);
+    }
 }

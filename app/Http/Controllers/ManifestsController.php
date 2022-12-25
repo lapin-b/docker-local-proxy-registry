@@ -52,16 +52,26 @@ class ManifestsController extends Controller
     }
 
     public function get_manifest(Request $request, string $container_ref, string $manifest_ref) {
-        $manifest_ref_file = "repository/$container_ref/manifests/$manifest_ref";
+        if(!str_starts_with($manifest_ref, 'sha256:')){
+            $tag = ManifestTag::where('container', $container_ref)
+                ->where('tag', $manifest_ref)
+                ->where('registry', null)
+                ->firstOrFail();
+
+            $metadata = $tag->manifest_metadata;
+        } else {
+            $metadata = ManifestMetadata::where('docker_hash', $manifest_ref)
+                ->where('container', $container_ref)
+                ->where('registry', null)
+                ->firstOrFail();
+        }
+
+        $manifest_ref_file = "repository/$container_ref/manifests/$metadata->docker_hash";
         $storage = Storage::disk('s3');
 
         if($storage->fileMissing($manifest_ref_file)){
             return response(new DockerRegistryErrorBag(DockerRegistryError::unknown_manifest($manifest_ref, $container_ref)), 404);
         }
-
-        $metadata = ManifestMetadata::where('manifest_reference', $manifest_ref)
-            ->where('container_reference', $container_ref)
-            ->firstOrFail();
 
         return response($storage->get($manifest_ref_file))
             ->header('Docker-Content-Digest', $metadata->docker_hash)
