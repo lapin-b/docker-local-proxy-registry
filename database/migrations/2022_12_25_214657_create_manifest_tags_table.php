@@ -16,6 +16,7 @@ return new class extends Migration
     {
         Schema::create('manifest_tags', function (Blueprint $table) {
             $table->id();
+            $table->string('tag');
             $table->string('container');
             $table->string('registry')->nullable();
             $table->timestamps();

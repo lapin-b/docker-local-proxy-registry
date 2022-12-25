@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use League\Flysystem\MountManager;
+use Symfony\Component\Uid\Factory\UlidFactory;
+use Symfony\Component\Uid\Ulid;
 
 class UploadsController extends Controller
 {
@@ -14,10 +16,10 @@ class UploadsController extends Controller
         if($request->query('digest') != null){
             return response('Monolithic uploads are not supported', 501);
         }
-
-        $pending_container_layer = PendingContainerLayer::create([
+        $pending_container_layer = new PendingContainerLayer([
             'container_reference' => $container_ref,
         ]);
+        $pending_container_layer->id = Ulid::generate();
         $pending_container_layer->rel_upload_path = "uploads/$pending_container_layer->id";
         $pending_container_layer->save();
 
