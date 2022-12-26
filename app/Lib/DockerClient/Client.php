@@ -12,6 +12,15 @@ use Illuminate\Support\Facades\Http;
 enum AuthenticationChallengeType {
     case Basic;
     case Bearer;
+
+    public static function from(string $auth_method): self
+    {
+        return match($auth_method) {
+            "Basic" => self::Basic,
+            "Bearer" => self::Bearer,
+            default => throw new \RuntimeException("Unhandled challenge type $auth_method")
+        };
+    }
 }
 
 class Client
@@ -54,12 +63,14 @@ class Client
                 break;
             case AuthenticationChallengeType::Bearer:
                 $authentication = new BearerTokenStrategy(
+                    $this->registry,
+                    $this->container,
                     $registry_credentials?->username ?? null,
                     $registry_credentials?->password ?? null
                 );
                 break;
             default:
-                throw new \RuntimeException("Unknown challenge type $challenge_type->name");
+                throw new \RuntimeException("Unknown challenge type $challenge_type");
         }
 
         $authentication->execute_authentication($challenge_info);
@@ -78,7 +89,7 @@ class Client
             $matches
         );
 
-        $challenge_type = $matches['method'][0];
+        $challenge_type = AuthenticationChallengeType::from($matches['method'][0]);
         $challenge_parameters = collect($matches['key'])
             ->zip($matches['value'])
             ->mapWithKeys(fn ($value, $key) => [$value[0] => $value[1]]);

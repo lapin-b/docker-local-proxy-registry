@@ -30,4 +30,6 @@ use Illuminate\Database\Eloquent\Model;
 class DockerRegistryClient extends Model
 {
     use HasFactory;
+    public $timestamps = false;
+    protected $guarded = ['id'];
 }
