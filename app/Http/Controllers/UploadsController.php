@@ -52,6 +52,7 @@ class UploadsController extends Controller
         // I know.
         $temporary_upload_file = fopen($absolute_upload_path, 'a');
         stream_copy_to_stream($body, $temporary_upload_file);
+        fclose($temporary_upload_file);
 
         if($request->method() == 'PUT') {
             $docker_hash = $request->query('digest');
