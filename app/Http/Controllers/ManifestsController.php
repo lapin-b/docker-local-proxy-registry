@@ -66,16 +66,25 @@ class ManifestsController extends Controller
                 ->firstOrFail();
         }
 
-        $manifest_ref_file = "repository/$container_ref/manifests/$metadata->docker_hash";
+        $manifest_ref_file = "repository/$metadata->container/manifests/$metadata->docker_hash";
         $storage = Storage::disk('s3');
 
         if($storage->fileMissing($manifest_ref_file)){
             return response(new DockerRegistryErrorBag(DockerRegistryError::unknown_manifest($manifest_ref, $container_ref)), 404);
         }
 
-        return response($storage->get($manifest_ref_file))
-            ->header('Docker-Content-Digest', $metadata->docker_hash)
-            ->header('Content-Length', $metadata->filesize)
-            ->header('Content-Type', $metadata->content_type);
+        return response()->redirectTo(
+            $storage->temporaryUrl(
+                $manifest_ref_file,
+                now()->addMinutes(5),
+                [
+                    'ResponseContentType' => $metadata->content_type
+                ],
+            ),
+            307,
+            [
+                'Docker-Content-Digest' => $metadata->docker_hash
+            ]
+        );
     }
 }
