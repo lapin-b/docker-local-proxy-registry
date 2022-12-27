@@ -17,6 +17,7 @@ class PushContainerLayerJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     private ContainerLayer $layer;
+    public $backoff = 30;
 
     /**
      * Create a new job instance.
@@ -52,5 +53,9 @@ class PushContainerLayerJob implements ShouldQueue
         dispatch(function() use ($temporary_filename){
             Storage::delete("push/$temporary_filename");
         })->delay(now()->addMinutes(5));
+    }
+
+    public function retryUntil(){
+        return now()->addMinutes(60);
     }
 }
