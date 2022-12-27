@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\ProxyRegistry;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ProxyRegistry\PushContainerLayerJob;
 use App\Lib\DockerClient\Client;
 use App\Models\ContainerLayer;
 use Illuminate\Http\Response;
@@ -85,6 +86,7 @@ class BlobsController extends Controller
                     }
                     fclose($temp_fh);
                     $database_layer->save();
+                    PushContainerLayerJob::dispatch($database_layer);
                 },
                 200,
                 [
