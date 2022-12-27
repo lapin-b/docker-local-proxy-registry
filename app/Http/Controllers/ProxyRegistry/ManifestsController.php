@@ -31,7 +31,8 @@ class ManifestsController extends Controller
             $headers = [
                 'Docker-Content-Digest' => $existing_manifest->docker_hash,
                 'Content-Type' => $existing_manifest->content_type,
-                'X-Registry-Cache' => 'HIT',
+                'Content-Length' => $existing_manifest->size,
+                'Docker-Proxy-Cache' => 'HIT',
             ];
 
             if($request->method() != 'HEAD'){
@@ -92,7 +93,7 @@ class ManifestsController extends Controller
             'Content-Type' => $content_type,
             'Docker-Content-Digest' => $docker_hash,
             'Content-Length' => $manifest_size,
-            'X-Registry-Cache' => 'MISS'
+            'Docker-Proxy-Cache' => 'MISS'
         ]);
     }
 }
