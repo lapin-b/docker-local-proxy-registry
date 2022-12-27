@@ -46,7 +46,7 @@ class ManifestsController extends Controller
             ]);
         }
 
-        return response('', 200)
+        return response('', 201)
             ->header('Location', route('manifests.get', compact('manifest_ref', 'container_ref')))
             ->header('Docker-Content-Digest', "sha256:$file_hash");
     }
