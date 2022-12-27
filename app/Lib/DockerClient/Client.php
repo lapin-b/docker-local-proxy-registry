@@ -101,6 +101,26 @@ class Client
         return $response;
     }
 
+    public function get_blob(string $blob)
+    {
+        $url = "$this->base_url/$this->container/blobs/$blob";
+        $response = $this->authentication->inject_authentication(
+            Http::withOptions([
+                RequestOptions::STREAM => true
+            ])
+        )
+            ->accept(implode(',', self::SUPPORTED_MIMETYPES))
+            ->get($url);
+
+        if($response->status() == 404){
+            throw RegistryObjectNotFoundException::blob($this->registry, $this->container, $blob);
+        } else if ($response->status() != 200){
+            throw new UnexpectedStatusCodeException(200, $response->status(), $url);
+        }
+
+        return $response;
+    }
+
     /**
      * @param string $challenge
      * @return array{AuthenticationChallengeType, \Illuminate\Support\Collection}

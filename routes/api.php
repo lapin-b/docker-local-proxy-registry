@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BlobsController;
 use App\Http\Controllers\ManifestsController;
+use App\Http\Controllers\ProxyRegistry\BlobsController as ProxyBlobsController;
 use App\Http\Controllers\ProxyRegistry\ManifestsController as ProxyManifestsController;
 use App\Http\Controllers\RegistryBaseController;
 use Illuminate\Http\Request;
@@ -27,6 +28,7 @@ Route::prefix('/v2/')->group(function(){
     Route::delete('/{container_ref}/blobs/uploads/{pending_container_layer}', [UploadsController::class, 'cancel_upload']);
 
     Route::get('/p/{registry}/{container_ref}/manifests/{manifest_ref}', [ProxyManifestsController::class, 'get_manifest'])->name('manifests.proxy.get');
+    Route::get('/p/{registry}/{container_ref}/blobs/{blob_ref}', [ProxyBlobsController::class, 'get_blob'])->name('blobs.proxy.get');
 
     Route::get('/{container_ref}/blobs/{blob_ref}', [BlobsController::class, 'get_blob'])->name('blobs.get');
     Route::put('/{container_ref}/manifests/{manifest_ref}', [ManifestsController::class, 'upload_manifest'])->name('manifests.put');
