@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Jobs\ProxyRegistry\PushContainerLayerJob;
 use App\Lib\DockerClient\Client;
 use App\Models\ContainerLayer;
-use Illuminate\Http\Response;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -35,6 +35,7 @@ class BlobsController extends Controller
                         "proxy/$existing_blob->registry/$existing_blob->container/blobs/$existing_blob->docker_hash",
                         now()->addMinutes(5)
                     ),
+                    307,
                     $headers
                 );
             }
