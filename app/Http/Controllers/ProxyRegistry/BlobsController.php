@@ -5,21 +5,52 @@ namespace App\Http\Controllers\ProxyRegistry;
 use App\Http\Controllers\Controller;
 use App\Lib\DockerClient\Client;
 use App\Models\ContainerLayer;
+use Illuminate\Http\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class BlobsController extends Controller
 {
-    public function get_blob(Request $request, $registry, $container_ref, $blob_ref){
+    public function get_blob(Request $request, $registry, $container_ref, $blob_ref)
+    {
         $existing_blob = ContainerLayer::where('registry', $registry)
             ->where('container', $container_ref)
             ->where('docker_hash', $blob_ref)
             ->first();
 
-        if(!is_null($existing_blob)){
+        if (!is_null($existing_blob)) {
             // We can serve the existing blob in the database, be it from the S3 bucket or the temporary file
-            return response('', 501);
+            $headers = [
+                'Docker-Content-Digest' => $existing_blob->docker_hash,
+                'Content-Type' => 'application/octet-stream',
+                'Content-Length' => $existing_blob->size,
+                'Docker-Proxy-Cache' => 'S3'
+            ];
+
+            if (is_null($existing_blob->temporary_filename)) {
+                return Response::redirectTo(
+                    Storage::drive('s3')->temporaryUrl(
+                        "proxy/$existing_blob->registry/$existing_blob->container/blobs/$existing_blob->docker_hash",
+                        now()->addMinutes(5)
+                    ),
+                    $headers
+                );
+            }
+
+            $headers['Docker-Proxy-Cache'] = 'LOCAL';
+            $file_handle = fopen(Storage::drive('local')->path("push/$existing_blob->temporary_filename"), 'r');
+
+            return response()->stream(
+                function() use ($file_handle) {
+                    while(!feof($file_handle)) {
+                        echo fgets($file_handle, 16 * 1024);
+                        flush();
+                    }
+                },
+                200,
+                $headers
+            );
         }
 
         $client = new Client($registry, $container_ref);
@@ -59,7 +90,8 @@ class BlobsController extends Controller
                 [
                     'Docker-Content-Digest' => $blob_ref,
                     'Content-Type' => 'application/octet-stream',
-                    'Docker-Proxy-Cache' => 'MISS'
+                    'Content-Length' => $database_layer->size,
+                    'Docker-Proxy-Cache' => 'MISS',
                 ]
             );
     }
