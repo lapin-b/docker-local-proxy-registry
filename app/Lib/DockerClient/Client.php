@@ -88,9 +88,7 @@ class Client
 
     public function get_manifest($manifest, bool $head = false): Response {
         $url = "$this->base_url/$this->container/manifests/$manifest";
-        $response = $this->authentication->inject_authentication(Http::withOptions([
-            RequestOptions::STREAM => true
-        ]))
+        $response = $this->authentication->inject_authentication(Http::withOptions([]))
             ->accept(implode(',', self::SUPPORTED_MIMETYPES))
             ->get($url);
 
