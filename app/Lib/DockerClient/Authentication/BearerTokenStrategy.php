@@ -28,7 +28,7 @@ class BearerTokenStrategy implements AuthenticationStrategy
 
     function inject_authentication(PendingRequest $request): PendingRequest
     {
-        return $request;
+        return $request->withToken($this->token);
     }
 
     function is_valid()

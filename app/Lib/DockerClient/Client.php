@@ -7,6 +7,8 @@ use App\Lib\DockerClient\Authentication\AuthenticationStrategy;
 use App\Lib\DockerClient\Authentication\BearerTokenStrategy;
 use App\Lib\DockerClient\Authentication\HttpBasicStrategy;
 use App\Models\DockerRegistryCredential;
+use GuzzleHttp\RequestOptions;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
 enum AuthenticationChallengeType {
@@ -25,6 +27,13 @@ enum AuthenticationChallengeType {
 
 class Client
 {
+    private const SUPPORTED_MIMETYPES = [
+        "application/vnd.docker.distribution.manifest.v2+json",
+        "application/vnd.docker.distribution.manifest.list.v2+json",
+        "application/vnd.docker.image.rootfs.diff.tar.gzip",
+        "application/vnd.docker.image.rootfs.foreign.diff.tar.gzip"
+    ];
+
     private ?AuthenticationStrategy $authentication = null;
     private string $registry;
     private string $container;
@@ -74,6 +83,24 @@ class Client
         }
 
         $authentication->execute_authentication($challenge_info);
+        $this->authentication = $authentication;
+    }
+
+    public function get_manifest($manifest, bool $head = false): Response {
+        $url = "$this->base_url/$this->container/manifests/$manifest";
+        $response = $this->authentication->inject_authentication(Http::withOptions([
+            RequestOptions::STREAM => true
+        ]))
+            ->accept(implode(',', self::SUPPORTED_MIMETYPES))
+            ->get($url);
+
+        if($response->status() == 404){
+            throw RegistryObjectNotFoundException::manifest($this->registry, $this->container, $manifest);
+        } else if($response->status() != 200){
+            throw new UnexpectedStatusCodeException(200, $response->status(), $url);
+        }
+
+        return $response;
     }
 
     /**

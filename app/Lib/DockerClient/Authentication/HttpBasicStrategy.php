@@ -27,6 +27,6 @@ class HttpBasicStrategy implements AuthenticationStrategy
 
     function execute_authentication(Collection $challenge_data)
     {
-
+        // TODO: Vérifier que les creds sont corrects
     }
 }
