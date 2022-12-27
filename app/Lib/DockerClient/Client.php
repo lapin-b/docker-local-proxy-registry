@@ -54,7 +54,7 @@ class Client
         if($base_response->status() == 200){
             $this->authentication = new AnonymousAuthStrategy();
         } else if($base_response->status() != 401){
-            throw new UnexpectedStatusCodeException(401, $base_response->status(), "$this->base_url/");
+            throw UnexpectedStatusCodeException::create(401, $base_response->status(), "$this->base_url/");
         }
 
         $challenge = $base_response->header('www-authenticate');
@@ -66,7 +66,7 @@ class Client
         switch($challenge_type){
             case AuthenticationChallengeType::Basic:
                 if(is_null($registry_credentials)){
-                    throw new AuthenticationCredentialsRequiredException($challenge_type, $this->registry);
+                    throw AuthenticationCredentialsRequiredException::create($challenge_type, $this->registry);
                 }
                 $authentication = new HttpBasicStrategy($registry_credentials->username, $registry_credentials->password);
                 break;
@@ -95,7 +95,7 @@ class Client
         if($response->status() == 404){
             throw RegistryObjectNotFoundException::manifest($this->registry, $this->container, $manifest);
         } else if($response->status() != 200){
-            throw new UnexpectedStatusCodeException(200, $response->status(), $url);
+            throw UnexpectedStatusCodeException::create(200, $response->status(), $url);
         }
 
         return $response;
@@ -115,7 +115,7 @@ class Client
         if($response->status() == 404){
             throw RegistryObjectNotFoundException::blob($this->registry, $this->container, $blob);
         } else if ($response->status() != 200){
-            throw new UnexpectedStatusCodeException(200, $response->status(), $url);
+            throw UnexpectedStatusCodeException::create(200, $response->status(), $url);
         }
 
         return $response;

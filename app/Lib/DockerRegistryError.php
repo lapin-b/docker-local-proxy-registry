@@ -14,6 +14,8 @@ class DockerRegistryError implements JsonSerializable
     const ERR_INVALID_NAME = 'NAME_INVALID';
     const ERR_UNKNOWN_NAME = 'NAME_UNKNOWN';
     const ERR_UNKNOWN_BLOB = 'BLOB_UNKNOWN';
+    const ERR_UNAUTHENTICATED = 'UNAUTHORIZED';
+    const ERR_UNKNOWN = 'UNKNOWN';
 
     public string $code;
     public string $message;
