@@ -45,8 +45,12 @@ class PushContainerLayerJob implements ShouldQueue
             "s3://proxy/{$this->layer->registry}/{$this->layer->container}/blobs/{$this->layer->docker_hash}"
         );
 
-        $mount->delete("local://push/{$this->layer->temporary_filename}");
+        $temporary_filename = $this->layer->temporary_filename;
         $this->layer->temporary_filename = null;
         $this->layer->save();
+
+        dispatch(function() use ($temporary_filename){
+            Storage::delete("push/$temporary_filename");
+        })->delay(now()->addMinutes(5));
     }
 }
