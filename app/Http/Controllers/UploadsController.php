@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Lib\DockerRegistryError;
+use App\Lib\DockerRegistryErrorBag;
 use App\Models\PendingContainerLayer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -114,6 +116,6 @@ class UploadsController extends Controller
         string $container_ref,
         string $upload_ref
     ){
-        return response('', 404);
+        return response(new DockerRegistryErrorBag(new DockerRegistryError('BLOB_UPLOAD_INVALID', 'Not implemented')), 404);
     }
 }
