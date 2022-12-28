@@ -116,6 +116,18 @@ class UploadsController extends Controller
         string $container_ref,
         string $upload_ref
     ){
-        return response(new DockerRegistryErrorBag(new DockerRegistryError('BLOB_UPLOAD_INVALID', 'Not implemented')), 404);
+        $pending_upload = PendingContainerLayer::findOrFail($upload_ref);
+        $storage = Storage::drive('local');
+        $headers = [
+            'Range' => '0-0',
+            'Content-Length' => 0,
+            'Docker-Upload-UUID' => $pending_upload->id
+        ];
+
+        if($storage->exists($pending_upload->rel_upload_path)){
+            $headers['Range'] = '0-'.$storage->size($pending_upload->rel_upload_path);
+        }
+
+        return response('', 202)->withHeaders($headers);
     }
 }
