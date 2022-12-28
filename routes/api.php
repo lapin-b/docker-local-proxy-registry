@@ -23,6 +23,7 @@ use App\Http\Controllers\UploadsController;
 Route::prefix('/v2/')->group(function(){
     Route::get('/', [RegistryBaseController::class, 'base']);
     Route::post('/{container_ref}/blobs/uploads', [UploadsController::class, 'initiateUpload'])->name('blobs.init_upload');
+    Route::get('/{container_ref}/blobs/uploads/{pending_container_layer}', [UploadsController::class, 'upload_status']);
     Route::patch('/{container_ref}/blobs/uploads/{pending_container_layer}', [UploadsController::class, 'process_partial_update'])->name('blobs.process_upload');
     Route::put('/{container_ref}/blobs/uploads/{pending_container_layer}', [UploadsController::class, 'process_partial_update']);
     Route::delete('/{container_ref}/blobs/uploads/{pending_container_layer}', [UploadsController::class, 'cancel_upload']);

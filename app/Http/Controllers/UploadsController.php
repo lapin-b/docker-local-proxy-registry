@@ -108,4 +108,12 @@ class UploadsController extends Controller
 
         return response('', 200);
     }
+
+    public function upload_status(
+        Request $request,
+        string $container_ref,
+        string $upload_ref
+    ){
+        return response('', 404);
+    }
 }
