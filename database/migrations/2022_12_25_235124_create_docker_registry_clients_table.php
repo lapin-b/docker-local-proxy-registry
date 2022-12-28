@@ -20,7 +20,7 @@ return new class extends Migration
             $table->dateTimeTz('issued_at');
             $table->dateTimeTz('expires_at');
             $table->integer('validity_time');
-            $table->string('access_token');
+            $table->text('access_token');
         });
     }
 
