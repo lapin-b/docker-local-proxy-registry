@@ -22,7 +22,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreignIdFor(ManifestMetadata::class)
-                ->constrained()
+                ->constrained('manifest_metadata')
                 ->cascadeOnDelete();
         });
     }
