@@ -6,9 +6,12 @@ use App\Lib\DockerClient\BadAuthenticationCredentialsException;
 use App\Lib\DockerClient\DockerClientException;
 use App\Models\DockerRegistryClient;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Log\Logger;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Log;
 
 class BearerTokenStrategy implements AuthenticationStrategy
 {
@@ -33,29 +36,40 @@ class BearerTokenStrategy implements AuthenticationStrategy
 
     function is_valid()
     {
-        $existing_record = DockerRegistryClient::where('registry', $this->registry)
+        return DockerRegistryClient::where('registry', $this->registry)
             ->where('container', $this->container)
             ->where('expires_at', '>', now())
             ->orderBy('expires_at', 'desc')
-            ->first();
-
-        return $existing_record != null;
+            ->exists();
     }
 
     function execute_authentication(Collection $challenge_data)
     {
-        $existing_record = DockerRegistryClient::where('registry', $this->registry)
-            ->where('container', $this->container)
-            ->where('expires_at', '>', now())
-            ->orderBy('expires_at', 'desc')
-            ->first();
+        $logger = Log::withContext([
+            'registry' => $this->registry,
+            'realm' => $challenge_data->get('realm'),
+            'container_ref' => $this->container
+        ]);
 
-        if($existing_record != null){
-            $this->token = $existing_record->access_token;
+        if($this->_reuse_existing_token()){
+            $logger->info('Found valid token in non-lock environment');
+            return;
+        }
+
+        $lock = Cache::lock("$this->registry.$this->container");
+        $lock->get(function() use ($logger, $challenge_data){
+            $this->_execute_authentication($challenge_data, $logger);
+        });
+    }
+
+    private function _execute_authentication(Collection $challenge_data, Logger $logger){
+        if($this->_reuse_existing_token()){
+            $logger->info('Found valid token in lock environment');
             return;
         }
 
         $realm = $challenge_data->pull('realm');
+
         if(is_null($realm)){
             throw new DockerClientException("No realm passed for bearer token authentication");
         }
@@ -68,9 +82,11 @@ class BearerTokenStrategy implements AuthenticationStrategy
             $pending_request->withBasicAuth($this->username, $this->password);
         }
 
+        $logger->info('Attempting authentication with username ' . $this->username ?? '<no username>');
         $response = $pending_request->get("$realm?$challenge_string");
 
         if($response->status() == 401){
+            $logger->error('Received HTTP 401, invalid credentials');
             throw BadAuthenticationCredentialsException::bearer_token_auth($this->registry, $realm, $this->username);
         }
 
@@ -81,6 +97,7 @@ class BearerTokenStrategy implements AuthenticationStrategy
         // Inspiration from https://github.com/camallo/dkregistry-rs/blob/37acecb4b8139dd1b1cc83795442f94f90e1ffc5/src/v2/auth.rs#L67.
         // Apparently, token servers can return a 200 and "unauthenticated" as a token. Why ?
         if(empty($token_payload['token']) || $token_payload['token'] == 'authenticated'){
+            $logger->error('Registry returned 200 with unauthenticated token. Considering invalid credentials');
             throw BadAuthenticationCredentialsException::bearer_token_auth($this->registry, $realm, $this->username);
         }
 
@@ -89,6 +106,7 @@ class BearerTokenStrategy implements AuthenticationStrategy
         $expires_at = $issued_at->addSeconds($expires_in);
         $this->token = $token_payload['token'];
 
+        $logger->info('Successfully authenticated to the registry');
         DockerRegistryClient::create([
             'registry' => $this->registry,
             'container' => $this->container,
@@ -97,5 +115,20 @@ class BearerTokenStrategy implements AuthenticationStrategy
             'validity_time' => $expires_in,
             'access_token' => $this->token
         ]);
+    }
+
+    private function _reuse_existing_token(){
+        $existing_record = DockerRegistryClient::where('registry', $this->registry)
+            ->where('container', $this->container)
+            ->where('expires_at', '>', now())
+            ->orderBy('expires_at', 'desc')
+            ->first();
+
+        if($existing_record != null){
+            $this->token = $existing_record->access_token;
+            return true;
+        }
+
+        return false;
     }
 }

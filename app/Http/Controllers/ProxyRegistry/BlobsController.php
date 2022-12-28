@@ -7,6 +7,7 @@ use App\Jobs\ProxyRegistry\PushContainerLayerJob;
 use App\Lib\DockerClient\Client;
 use App\Models\ContainerLayer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -19,8 +20,10 @@ class BlobsController extends Controller
             ->where('container', $container_ref)
             ->where('docker_hash', $blob_ref)
             ->first();
+        $logger = Log::withContext(['container_ref' => $container_ref, 'registry' => $registry, 'blob' => $blob_ref]);
 
         if (!is_null($existing_blob)) {
+            $logger->info("Blob exists in cache");
             // We can serve the existing blob in the database, be it from the S3 bucket or the temporary file
             $headers = [
                 'Docker-Content-Digest' => $existing_blob->docker_hash,
@@ -30,6 +33,7 @@ class BlobsController extends Controller
             ];
 
             if (is_null($existing_blob->temporary_filename)) {
+                $logger->info("Serving from S3");
                 return Response::redirectTo(
                     Storage::drive('s3')->temporaryUrl(
                         "proxy/$existing_blob->registry/$existing_blob->container/blobs/$existing_blob->docker_hash",
@@ -40,6 +44,7 @@ class BlobsController extends Controller
                 );
             }
 
+            $logger->info("Serving from local");
             $headers['Docker-Proxy-Cache'] = 'LOCAL';
             $file_handle = fopen(Storage::drive('local')->path("push/$existing_blob->temporary_filename"), 'r');
 
@@ -55,6 +60,7 @@ class BlobsController extends Controller
             );
         }
 
+        $logger->info("Serving from remote");
         $client = new Client($registry, $container_ref);
         $client->authenticate();
         $layer_response = $client->get_blob($blob_ref);

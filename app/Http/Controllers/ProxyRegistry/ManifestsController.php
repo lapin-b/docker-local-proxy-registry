@@ -7,11 +7,15 @@ use App\Lib\DockerClient\Client;
 use App\Models\ManifestMetadata;
 use App\Models\ManifestTag;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class ManifestsController extends Controller
 {
     public function get_manifest(Request $request, $registry, $container_ref, $manifest_ref){
+        $logger = Log::withContext(['container_ref' => $container_ref, 'registry' => $registry, 'manifest' => $manifest_ref]);
+
+        $logger->info('Checking remote registry for existing and updated manifest');
         $client = new Client($registry, $container_ref);
         $client->authenticate();
         $manifest_head = $client->get_manifest($manifest_ref, true);
@@ -36,7 +40,9 @@ class ManifestsController extends Controller
             ];
 
             if($request->method() != 'HEAD'){
+                $logger->info('Manifest exists in cache and request is not HEAD, serving from S3');
                 $code = 307;
+                $logger->info("Registering temporary URL");
                 $headers['Location'] = Storage::drive('s3')
                     ->temporaryUrl(
                         "proxy/$registry/$container_ref/manifests/$existing_manifest->docker_hash",
@@ -45,11 +51,15 @@ class ManifestsController extends Controller
                             "ResponseContentType" => $existing_manifest->content_type
                         ]
                     );
+                $logger->info("Registered temporary URL");
+            } else {
+                $logger->info('Manifest exists in cache and request is HEAD, sending response');
             }
 
             return response('', $code, $headers);
         }
 
+        $logger->info('No manifest found, serving from remote and caching');
         $proxied_manifest = $client->get_manifest($manifest_ref);
 
         $docker_hash = $proxied_manifest->header('Docker-Content-Digest');

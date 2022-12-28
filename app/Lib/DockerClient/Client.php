@@ -10,6 +10,7 @@ use App\Models\DockerRegistryCredential;
 use GuzzleHttp\RequestOptions;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 enum AuthenticationChallengeType {
     case Basic;
@@ -46,10 +47,13 @@ class Client
     }
 
     public function authenticate(){
+        $logger = Log::withContext(['container_ref' => $this->container, 'registry' => $this->registry]);
         if(!is_null($this->authentication) && $this->authentication->is_valid()){
+            $logger->info("Already authenticated and credentials are still valid");
             return;
         }
 
+        $logger->info("Discovering authentication mechanism");
         $base_response = Http::get("$this->base_url/");
         if($base_response->status() == 200){
             $this->authentication = new AnonymousAuthStrategy();
@@ -65,12 +69,14 @@ class Client
 
         switch($challenge_type){
             case AuthenticationChallengeType::Basic:
+                $logger->info('Discovered HTTP Basic');
                 if(is_null($registry_credentials)){
                     throw AuthenticationCredentialsRequiredException::create($challenge_type, $this->registry);
                 }
                 $authentication = new HttpBasicStrategy($registry_credentials->username, $registry_credentials->password);
                 break;
             case AuthenticationChallengeType::Bearer:
+                $logger->info("Discovered Bearer token");
                 $authentication = new BearerTokenStrategy(
                     $this->registry,
                     $this->container,
@@ -88,9 +94,14 @@ class Client
 
     public function get_manifest($manifest, bool $head = false): Response {
         $url = "$this->base_url/$this->container/manifests/$manifest";
-        $response = $this->authentication->inject_authentication(Http::withOptions([]))
-            ->accept(implode(',', self::SUPPORTED_MIMETYPES))
-            ->get($url);
+        $request = $this->authentication->inject_authentication(Http::withOptions([]))
+            ->accept(implode(',', self::SUPPORTED_MIMETYPES));
+
+        if($head){
+            $response = $request->head($url);
+        } else {
+            $response = $request->get($url);
+        }
 
         if($response->status() == 404){
             throw RegistryObjectNotFoundException::manifest($this->registry, $this->container, $manifest);

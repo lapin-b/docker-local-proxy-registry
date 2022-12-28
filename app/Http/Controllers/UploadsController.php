@@ -9,21 +9,25 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use League\Flysystem\MountManager;
-use Symfony\Component\Uid\Factory\UlidFactory;
 use Symfony\Component\Uid\Ulid;
 
 class UploadsController extends Controller
 {
     public function initiateUpload(Request $request, string $container_ref){
+        $logger = Log::withContext(['container_ref' => $container_ref]);
+
         if($request->query('digest') != null){
             return response('Monolithic uploads are not supported', 501);
         }
+
+        $logger->info("Creating upload");
         $pending_container_layer = new PendingContainerLayer([
             'container_reference' => $container_ref,
         ]);
         $pending_container_layer->id = Ulid::generate();
         $pending_container_layer->rel_upload_path = "uploads/$pending_container_layer->id";
         $pending_container_layer->save();
+        $logger->info("Created upload $pending_container_layer->id");
 
         return response('', 202)
             ->header(
@@ -44,6 +48,8 @@ class UploadsController extends Controller
             return response('', 403);
         }
 
+        $logger = Log::withContext(['container_ref' => $container_ref, 'upload' => $upload_ref]);
+
         $body = $request->getContent(true);
         $fs = Storage::disk('local');
         $fs->makeDirectory(dirname($pending_container_layer->rel_upload_path));
@@ -52,11 +58,13 @@ class UploadsController extends Controller
         // We need to bypass the Storage abstraction because calling "append"
         // on it causes the original file to be read, then written back. Silly,
         // I know.
+        $logger->info("Copying upload body stream");
         $temporary_upload_file = fopen($absolute_upload_path, 'a');
         stream_copy_to_stream($body, $temporary_upload_file);
         fclose($temporary_upload_file);
 
         if($request->method() == 'PUT') {
+            $logger->info("Finalization requested, sending layer on the S3 bucket");
             $docker_hash = $request->query('digest');
             $s3 = Storage::disk('s3');
 
@@ -71,6 +79,7 @@ class UploadsController extends Controller
             );
             $pending_container_layer->delete();
 
+            $logger->info("Redirecting the client to the S3 bucket");
             return response('', 201)
                 ->header(
                     'Location',
@@ -83,7 +92,7 @@ class UploadsController extends Controller
         }
 
         $file_size = $fs->size($pending_container_layer->rel_upload_path);
-
+        $logger->info("Upload incomplete, not finalizing");
         return response('', 202)
             ->header(
                 'Location',
@@ -102,7 +111,9 @@ class UploadsController extends Controller
         if($pending_container_layer->container_reference != $container_ref){
             return response('', 403);
         }
+        $logger = Log::withContext(['container_ref' => $container_ref, 'upload' => $upload_ref]);
 
+        $logger->info("$upload_ref $container_ref Canceling upload");
         $upload_path = 'uploads/' . $pending_container_layer->id;
         $fs = Storage::disk('local');
         $fs->delete($upload_path);
