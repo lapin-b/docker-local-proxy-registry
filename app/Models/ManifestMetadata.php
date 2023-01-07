@@ -35,4 +35,8 @@ class ManifestMetadata extends Model
     use HasFactory;
     protected $table = 'manifest_metadata';
     protected $guarded = ['created_at', 'updated_at', 'id'];
+
+    public function layers(){
+        return $this->belongsToMany(ContainerLayer::class);
+    }
 }
