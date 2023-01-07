@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Lib\DockerRegistryError;
 use App\Lib\DockerRegistryErrorBag;
+use App\Models\ContainerLayer;
 use App\Models\PendingContainerLayer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -63,6 +64,7 @@ class UploadsController extends Controller
         stream_copy_to_stream($body, $temporary_upload_file);
         fclose($temporary_upload_file);
 
+        $file_size = $fs->size($pending_container_layer->rel_upload_path);
         if($request->method() == 'PUT') {
             $logger->info("Finalization requested, sending layer on the S3 bucket");
             $docker_hash = $request->query('digest');
@@ -77,6 +79,14 @@ class UploadsController extends Controller
                 'local://' . $pending_container_layer->rel_upload_path,
                 's3://' . $final_storage_path
             );
+
+            ContainerLayer::create([
+                'docker_hash' => $docker_hash,
+                'container' => $pending_container_layer->container_reference,
+                'registry' => null,
+                'size' => $file_size,
+            ]);
+
             $pending_container_layer->delete();
 
             $logger->info("Redirecting the client to the S3 bucket");
@@ -91,7 +101,6 @@ class UploadsController extends Controller
                 ->header('Docker-Content-Digest', $docker_hash);
         }
 
-        $file_size = $fs->size($pending_container_layer->rel_upload_path);
         $logger->info("Upload incomplete, not finalizing");
         return response('', 202)
             ->header(
