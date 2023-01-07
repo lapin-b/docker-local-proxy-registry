@@ -74,30 +74,10 @@ class ManifestsController extends Controller
             $response_body
         );
 
-        $db_manifest = ManifestMetadata::updateOrCreate(
-            [
-                'docker_hash' => $docker_hash,
-                'container' => $container_ref,
-                'registry' => $registry,
-            ],
-            [
-                'content_type' => $content_type,
-                'size' => $manifest_size
-            ]
+        $db_manifest = $this->createManifestAndLinkedTag(
+            $manifest_ref, $container_ref, $registry,
+            $content_type, $manifest_size, $docker_hash
         );
-
-        if (!str_starts_with($manifest_ref, 'sha256:')) {
-            ManifestTag::updateOrInsert(
-                [
-                    'container' => $container_ref,
-                    'tag' => $manifest_ref,
-                    'registry' => $registry,
-                ],
-                [
-                    'manifest_metadata_id' => $db_manifest->id
-                ]
-            );
-        }
 
         $this->syncLayerRelationships($response_body, $db_manifest);
 
