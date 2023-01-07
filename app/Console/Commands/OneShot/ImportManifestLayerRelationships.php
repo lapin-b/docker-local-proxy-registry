@@ -31,8 +31,11 @@ class ImportManifestLayerRelationships extends Command
     public function handle()
     {
         $drive = Storage::drive('s3');
-        $manifests = ManifestMetadata::where('content_type', '=', 'application/vnd.docker.distribution.manifest.v2+json')
-            ->get();
+        $manifests = ManifestMetadata::where(
+            'content_type',
+            '=',
+            'application/vnd.docker.distribution.manifest.v2+json'
+        )->get();
 
         foreach($manifests as $manifest){
             $this->info("Fetching manifest $manifest->registry/$manifest->container ($manifest->docker_hash)");
@@ -43,20 +46,36 @@ class ImportManifestLayerRelationships extends Command
             );
 
             $manifest_content = json_decode($manifest_file, true);
-            $manifest_layers = collect($manifest_content['layers'])->map(fn($layer) => $layer['digest']);
-            $manifest_layers->push($manifest_content['config']['digest']);
+            $manifest_layers = collect($manifest_content['layers']);
+            $manifest_layers->push($manifest_content['config']);
 
             $layers_to_sync_to_manifest = [];
             foreach($manifest_layers as $layer){
-                $this->comment("Attaching layer $layer to the manifest");
-                $db_layer = ContainerLayer::where('registry', $manifest->registry)
-                    ->where('container', $manifest->container)
-                    ->where('docker_hash', $layer)
-                    ->firstOrCreate();
+                $layer_hash = $layer['digest'];
+                $layer_size = $layer['size'];
 
-                if($db_layer == null){
-                    $this->error("Couldn't find layer $layer in the database. The image might not be completely in cache or the database is broken.");
-                    continue;
+                $this->info("Attaching layer $layer_hash to the manifest");
+
+                $db_layer = ContainerLayer::firstOrNew([
+                    'docker_hash' => $layer_hash,
+                    'container' => $manifest->container,
+                    'registry' => $manifest->registry,
+                ], [
+                    'size' => $layer_size
+                ]);
+
+                if(!$db_layer->exists){
+                    $this->warn("Layer $layer_hash does not exist in the database. Checking storage");
+                    $layer_path = !empty($manifest->registry)
+                        ? "proxy/$manifest->registry/$manifest->container/blobs/$layer_hash"
+                        : "repository/$manifest->container/blobs/$layer_hash";
+
+                    if(!$drive->exists($layer_path)){
+                        $this->error("Layer $layer_hash does not exist in the repository. This indicates a broken repository for this image or a broken database. Skipping");
+                        continue;
+                    }
+
+                    $db_layer->save();
                 }
 
                 $layers_to_sync_to_manifest[] = $db_layer->id;
