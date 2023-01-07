@@ -43,11 +43,12 @@ class ImportManifestLayerRelationships extends Command
 
         foreach($manifests as $manifest){
             $this->info("Fetching manifest $manifest->registry/$manifest->container ($manifest->docker_hash)");
-            $manifest_file = $drive->get(
-                !empty($manifest->registry)
-                    ? "proxy/$manifest->registry/$manifest->container/manifests/$manifest->docker_hash"
-                    : "repository/$manifest->container/manifests/$manifest->docker_hash"
-            );
+            $manifest_file = $drive->get($this->_objectPath(
+                self::REGISTRY_OBJECT_MANIFESTS,
+                $manifest->registry,
+                $manifest->container,
+                $manifest->docker_hash
+            ));
 
             $manifest_content = json_decode($manifest_file, true);
             $manifest_layers = collect($manifest_content['layers']);
@@ -83,12 +84,15 @@ class ImportManifestLayerRelationships extends Command
 
             if(!$db_layer->exists){
                 $this->warn("Layer $layer_hash does not exist in the database. Checking storage");
-                $layer_path = !empty($manifest->registry)
-                    ? "proxy/$manifest->registry/$manifest->container/blobs/$layer_hash"
-                    : "repository/$manifest->container/blobs/$layer_hash";
+                $layer_path = $this->_objectPath(
+                    self::REGISTRY_OBJECT_BLOBS,
+                    $manifest->registry,
+                    $manifest->container,
+                    $layer_hash
+                );
 
                 if(!$drive->exists($layer_path)){
-                    $this->error("Layer $layer_hash does not exist in the repository. This indicates a broken repository for this image or a broken database. Skipping");
+                    $this->error("Layer $layer_hash does not exist in the repository. This indicates a broken repository for the manifest or a broken database. Skipping");
                     continue;
                 }
 
@@ -100,5 +104,11 @@ class ImportManifestLayerRelationships extends Command
 
         $manifest->layers()->sync($layers_to_sync_to_manifest);
         $manifest->save();
+    }
+
+    private function _objectPath(string $objectType, ?string $registry, string $container, string $hash){
+        return empty($registry)
+            ? "repository/$container/$objectType/$hash"
+            : "proxy/$registry/$objectType/$hash";
     }
 }
