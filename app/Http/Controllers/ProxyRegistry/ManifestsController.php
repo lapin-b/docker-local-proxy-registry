@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\ProxyRegistry;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Traits\ProcessesDockerManifests;
 use App\Lib\DockerClient\Client;
 use App\Models\ManifestMetadata;
 use App\Models\ManifestTag;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Storage;
 
 class ManifestsController extends Controller
 {
+    use ProcessesDockerManifests;
+
     public function get_manifest(Request $request, $registry, $container_ref, $manifest_ref){
         $logger = Log::withContext(['container_ref' => $container_ref, 'registry' => $registry, 'manifest' => $manifest_ref]);
 
@@ -95,6 +98,8 @@ class ManifestsController extends Controller
                 ]
             );
         }
+
+        $this->syncLayerRelationships($response_body, $db_manifest);
 
         return response($request->method() == 'HEAD' ? '' : $response_body, 200, [
             'Content-Type' => $content_type,

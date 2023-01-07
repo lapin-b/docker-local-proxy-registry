@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Traits\ProcessesDockerManifests;
 use App\Lib\DockerRegistryError;
 use App\Lib\DockerRegistryErrorBag;
 use App\Models\ManifestMetadata;
@@ -13,18 +14,24 @@ use Response;
 
 class ManifestsController extends Controller
 {
+    use ProcessesDockerManifests;
+
     public function upload_manifest(Request $request, string $container_ref, string $manifest_ref) {
         $manifest_content = $request->getContent();
+
         $file_hash = hash('sha256', $manifest_content);
         $file_size = strlen($manifest_content);
-        $manifest_hash_file = "repository/$container_ref/manifests/sha256:$file_hash";
+        $manifest_hash_path = "repository/$container_ref/manifests/sha256:$file_hash";
 
-        // Écrire le manifeste dans le fichier
+        // Write the manifest in the file in the storaged
         $storage = Storage::drive('s3');
-        $storage->put($manifest_hash_file, $manifest_content);
+        $storage->put($manifest_hash_path, $manifest_content);
 
-        // Écrire le manifeste nouvellement créé dans la base de données
-        $hash_manifest_metadata = ManifestMetadata::updateOrCreate(
+        // Save the manifest reference into the database. The manifest will be referred by its hash and,
+        // if the original manifest reference is not a hash, we simulate making a symbolic link. Finally,
+        // we do the post-processing required to keep the state of the database in sync with the remote
+        // storage.
+        $db_manifest = ManifestMetadata::updateOrCreate(
             [
                 'docker_hash' => "sha256:$file_hash",
                 'container' => $container_ref,
@@ -42,9 +49,11 @@ class ManifestsController extends Controller
                 'container' => $container_ref,
                 'registry' => null,
             ], [
-                'manifest_metadata_id' => $hash_manifest_metadata->id
+                'manifest_metadata_id' => $db_manifest->id
             ]);
         }
+
+        $this->syncLayerRelationships($manifest_content, $db_manifest);
 
         return response('', 201)
             ->header('Location', route('manifests.get', compact('manifest_ref', 'container_ref')))
