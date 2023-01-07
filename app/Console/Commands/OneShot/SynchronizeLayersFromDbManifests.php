@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Filesystem\FilesystemAdapter;
 
-class ImportManifestLayerRelationships extends Command
+class SynchronizeLayersFromDbManifests extends Command
 {
     const REGISTRY_OBJECT_BLOBS = 'blobs';
     const REGISTRY_OBJECT_MANIFESTS = "manifests";
@@ -18,7 +18,7 @@ class ImportManifestLayerRelationships extends Command
      *
      * @var string
      */
-    protected $signature = 'oneshot:registry:import-layer-rel';
+    protected $signature = 'oneshot:registry:import-manifest-layers';
 
     /**
      * The console command description.
