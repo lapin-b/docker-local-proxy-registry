@@ -29,6 +29,10 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|ManifestMetadata whereSize($value)
  * @method static \Illuminate\Database\Eloquent\Builder|ManifestMetadata whereUpdatedAt($value)
  * @mixin \Eloquent
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\ContainerLayer[] $layers
+ * @property-read int|null $layers_count
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\ManifestTag[] $tags
+ * @property-read int|null $tags_count
  */
 class ManifestMetadata extends Model
 {
@@ -38,5 +42,9 @@ class ManifestMetadata extends Model
 
     public function layers(){
         return $this->belongsToMany(ContainerLayer::class);
+    }
+
+    public function tags(){
+        return $this->hasMany(ManifestTag::class);
     }
 }

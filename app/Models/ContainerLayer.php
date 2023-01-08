@@ -30,6 +30,8 @@ use Illuminate\Database\Eloquent\Model;
  * @method static \Illuminate\Database\Eloquent\Builder|ContainerLayer whereTemporaryFilename($value)
  * @method static \Illuminate\Database\Eloquent\Builder|ContainerLayer whereUpdatedAt($value)
  * @mixin \Eloquent
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\ManifestMetadata[] $manifests
+ * @property-read int|null $manifests_count
  */
 class ContainerLayer extends Model
 {
