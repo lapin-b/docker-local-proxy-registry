@@ -53,6 +53,15 @@ class RegistryStorage {
         return $manifest;
     }
 
+    public function fetch_container_layer(string $hash): ?ContainerLayer {
+        $layer = ContainerLayer::make($hash);
+        if(!$layer->exists()) {
+            return null;
+        }
+
+        return $layer;
+    }
+
     public static function strip_hash_algo(string $hash): string {
         if(str_starts_with($hash, 'sha256:')) {
             return substr($hash, strlen('sha256:'));
