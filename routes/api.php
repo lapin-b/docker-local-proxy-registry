@@ -23,13 +23,13 @@ use App\Http\Controllers\UploadsController;
 Route::prefix('/v2/')->group(function(){
     Route::get('/', [RegistryBaseController::class, 'base']);
     Route::post('/{container_ref}/blobs/uploads', [UploadsController::class, 'initiateUpload'])->name('blobs.init_upload');
-    Route::get('/{container_ref}/blobs/uploads/{pending_container_layer}', [UploadsController::class, 'upload_status']);
-    Route::patch('/{container_ref}/blobs/uploads/{pending_container_layer}', [UploadsController::class, 'process_partial_update'])->name('blobs.process_upload');
-    Route::put('/{container_ref}/blobs/uploads/{pending_container_layer}', [UploadsController::class, 'process_partial_update']);
-    Route::delete('/{container_ref}/blobs/uploads/{pending_container_layer}', [UploadsController::class, 'cancel_upload']);
+    Route::get('{container_ref}/uploads/{upload_ref}', [UploadsController::class, 'upload_status']);
+    Route::match(['PATCH', 'PUT'], '{container_ref}/uploads/{upload_ref}', [UploadsController::class, 'process_partial_update'])->name('blobs.process_upload');
+    Route::delete('/uploads/{upload_ref}', [UploadsController::class, 'cancel_upload']);
 
     Route::get('/p/{registry}/{container_ref}/manifests/{manifest_ref}', [ProxyManifestsController::class, 'get_manifest'])->name('manifests.proxy.get');
     Route::get('/p/{registry}/{container_ref}/blobs/{blob_ref}', [ProxyBlobsController::class, 'get_blob'])->name('blobs.proxy.get');
+    Route::get('/{container_ref}/blobs/{blob_ref}', function(){ return abort(501); })->name('blobs.get');
 
     Route::get('/{container_ref}/blobs/{blob_ref}', [BlobsController::class, 'get_blob'])->name('blobs.get');
     Route::put('/{container_ref}/manifests/{manifest_ref}', [ManifestsController::class, 'upload_manifest'])->name('manifests.put');
