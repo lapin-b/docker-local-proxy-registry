@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Traits\ProcessesDockerManifests;
 use App\Lib\DockerRegistryError;
 use App\Lib\DockerRegistryErrorBag;
+use App\Lib\RegistryStorage\RegistryStorage;
 use App\Models\ManifestMetadata;
 use App\Models\ManifestTag;
 use Illuminate\Http\Request;
@@ -16,33 +17,19 @@ class ManifestsController extends Controller
 {
     use ProcessesDockerManifests;
 
+    public function __construct(
+        private RegistryStorage $registry
+    ) {
+
+    }
+
     public function upload_manifest(Request $request, string $container_ref, string $manifest_ref) {
         $manifest_content = $request->getContent();
-
-        $docker_hash = 'sha256:' . hash('sha256', $manifest_content);
-        $file_size = strlen($manifest_content);
-        $manifest_hash_path = "repository/$container_ref/manifests/$docker_hash";
-
-        // Write the manifest in the file in the storaged
-        $storage = Storage::drive('s3');
-        $storage->put($manifest_hash_path, $manifest_content);
-
-        // Save the manifest reference into the database. The manifest will be referred by its hash and,
-        // if the original manifest reference is not a hash, we simulate making a symbolic link. Finally,
-        // we do the post-processing required to keep the state of the database in sync with the remote
-        // storage.
-
-        $db_manifest = $this->createManifestAndLinkedTag(
-            $manifest_ref, $container_ref, null,
-            $request->header('Content-Type'), $file_size,
-            $docker_hash
-        );
-
-        $this->syncLayerRelationships($manifest_content, $db_manifest);
+        $manifest = $this->registry->create_manifest($manifest_content, $container_ref, $manifest_ref);
 
         return response('', 201)
             ->header('Location', route('manifests.get', compact('manifest_ref', 'container_ref')))
-            ->header('Docker-Content-Digest', $docker_hash);
+            ->header('Docker-Content-Digest', 'sha256:' . $manifest->manifest_hash);
     }
 
     public function get_manifest(Request $request, string $container_ref, string $manifest_ref) {
