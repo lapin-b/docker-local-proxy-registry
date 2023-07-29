@@ -2,30 +2,28 @@
 
 namespace App\Lib\RegistryStorage;
 
-use Illuminate\Filesystem\FilesystemManager;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Symfony\Component\Uid\Ulid;
 
 class RegistryStorage {
     public function __construct(
-        private FilesystemManager $fs
+        private Filesystem $fs
     ){
-        
+
     }
 
     public function create_upload(): PendingUpload {
-        $ulid = Ulid::generate();
-        $upload = new PendingUpload($this->fs, $ulid);
-        $upload->create();
-
-        return $upload;
+        return tap(PendingUpload::make(Ulid::generate()), fn(PendingUpload $upload) => $upload->create());
     }
 
     public function fetch_upload(string $ulid): ?PendingUpload {
-        if(!$this->fs->exists(PendingUpload::storage_path($ulid))) {
+        $upload = PendingUpload::make($ulid);
+
+        if(!$upload->exists()){
             return null;
         }
 
-        return new PendingUpload($this->fs, $ulid);
+        return $upload;
     }
 
     public static function strip_hash_algo(string $hash): string {
