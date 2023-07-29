@@ -3,14 +3,14 @@
 namespace App\Lib\RegistryStorage;
 
 use Exception;
-use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Contracts\Routing\UrlRoutable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Filesystem\FilesystemAdapter;
 
 class PendingUpload implements UrlRoutable {
     public const STORAGE_FOLDER = 'uploads';
 
-    private Filesystem $fs;
+    private FilesystemAdapter $fs;
     public string $ulid;
 
     public function __construct() {

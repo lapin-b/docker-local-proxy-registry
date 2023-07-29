@@ -2,12 +2,12 @@
 
 namespace App\Lib\RegistryStorage;
 
-use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Filesystem\FilesystemAdapter;
 
 class ContainerManifest {
     public const STORAGE_PATH = 'registry';
 
-    private Filesystem $fs;
+    private FilesystemAdapter $fs;
     public string $container_path;
     public ?string $manifest_tag = null;
     public ?string $manifest_hash = null;
