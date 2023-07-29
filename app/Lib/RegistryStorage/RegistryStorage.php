@@ -37,7 +37,7 @@ class RegistryStorage {
 
         $this->fs->put($manifest_hash_path, $manifest_body);
 
-        if(str_starts_with($manifest_reference, 'sha256:')) {
+        if(!str_starts_with($manifest_reference, 'sha256:')) {
             $this->fs->put($manifest_tag_path, $manifest_content_hash);
         }
 
