@@ -26,7 +26,7 @@ class RegistryStorage {
         return $upload;
     }
 
-    public function create_manifest(string $manifest_body, string $container_path, string $manifest_reference): void {
+    public function create_manifest(string $manifest_body, string $container_path, string $manifest_reference): ContainerManifest {
         $manifest_content_hash = hash('sha256', $manifest_body);
 
         $manifest_hash_path = ContainerManifest::manifest_path_for($container_path, $manifest_content_hash);
@@ -45,7 +45,12 @@ class RegistryStorage {
     }
 
     public function fetch_manifest(string $container_path, string $tag): ?ContainerManifest {
-        // 
+        $manifest = ContainerManifest::make($container_path, $tag);
+        if($manifest->manifest_hash == null) {
+            return null;
+        }
+
+        return $manifest;
     }
 
     public static function strip_hash_algo(string $hash): string {

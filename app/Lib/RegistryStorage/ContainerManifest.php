@@ -16,6 +16,10 @@ class ContainerManifest {
         $this->fs = resolve('filesystem.disk');
     }
 
+    public function get(): string {
+        return $this->fs->get(self::manifest_path_for($this->container_path, $this->manifest_hash));
+    }
+
     public static function make(string $container_name, string $manifest_reference) {
         $manifest = new self;
         $manifest->container_path = $container_name;
