@@ -63,9 +63,10 @@ class Client
 
         $challenge = $base_response->header('www-authenticate');
         list($challenge_type, $challenge_info) = $this->_parseAuthenticateChallenge($challenge);
-        $registry_credentials = DockerRegistryCredential::where('registry', $this->registry)
-            ->limit(1)
-            ->first();
+        // $registry_credentials = DockerRegistryCredential::where('registry', $this->registry)
+        //     ->limit(1)
+        //     ->first();
+        $registry_credentials = null;
 
         switch($challenge_type){
             case AuthenticationChallengeType::Basic:
