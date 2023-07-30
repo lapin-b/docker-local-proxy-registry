@@ -46,20 +46,12 @@ class RegistryStorage {
 
     public function fetch_manifest(string $container_path, string $tag): ?ContainerManifest {
         $manifest = ContainerManifest::make($container_path, $tag);
-        if($manifest->manifest_hash == null) {
-            return null;
-        }
-
-        return $manifest;
+        return $manifest->exists() ? $manifest : null;
     }
 
     public function fetch_container_layer(string $hash): ?ContainerLayer {
         $layer = ContainerLayer::make($hash);
-        if(!$layer->exists()) {
-            return null;
-        }
-
-        return $layer;
+        return $layer->exists() ? $layer : null;
     }
 
     public static function strip_hash_algo(string $hash): string {

@@ -30,6 +30,10 @@ class ContainerManifest {
         return $this->fs->size(self::manifest_path_for($this->container_path, $this->manifest_hash));
     }
 
+    public function exists(): bool {
+        return $this->manifest_hash != null && $this->fs->exists(self::manifest_path_for($this->container_path, $this->manifest_hash));
+    }
+
     private function decode(): array {
         if($this->decoded == null) {
             $this->decoded = json_decode($this->get(), true);
