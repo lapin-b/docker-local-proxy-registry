@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
-use Log;
+use Illuminate\Support\Facades\Log;
 
 class BearerTokenStrategy implements AuthenticationStrategy
 {
@@ -21,12 +21,16 @@ class BearerTokenStrategy implements AuthenticationStrategy
     private string $container;
     private ?string $token = null;
 
+    private string $cache_key;
+
     public function __construct(string $registry, string $container, ?string $username = null, ?string $password = null)
     {
         $this->username = $username;
         $this->password = $password;
         $this->registry = $registry;
         $this->container = $container;
+
+        $this->cache_key = "bearer-" . $registry . '.' . $container;
     }
 
     function inject_authentication(PendingRequest $request): PendingRequest
@@ -36,11 +40,7 @@ class BearerTokenStrategy implements AuthenticationStrategy
 
     function is_valid()
     {
-        return DockerRegistryClient::where('registry', $this->registry)
-            ->where('container', $this->container)
-            ->where('expires_at', '>', now())
-            ->orderBy('expires_at', 'desc')
-            ->exists();
+        return Cache::has($this->cache_key);
     }
 
     function execute_authentication(Collection $challenge_data)
@@ -56,7 +56,7 @@ class BearerTokenStrategy implements AuthenticationStrategy
             return;
         }
 
-        $lock = Cache::lock("$this->registry.$this->container");
+        $lock = Cache::lock("lock-$this->registry.$this->container");
         $lock->get(function() use ($logger, $challenge_data){
             $this->_execute_authentication($challenge_data, $logger);
         });
@@ -96,7 +96,7 @@ class BearerTokenStrategy implements AuthenticationStrategy
         $token_payload = $response->json();
         // Inspiration from https://github.com/camallo/dkregistry-rs/blob/37acecb4b8139dd1b1cc83795442f94f90e1ffc5/src/v2/auth.rs#L67.
         // Apparently, token servers can return a 200 and "unauthenticated" as a token. Why ?
-        if(empty($token_payload['token']) || $token_payload['token'] == 'authenticated'){
+        if(empty($token_payload['token']) || $token_payload['token'] == 'unauthenticated'){
             $logger->error('Registry returned 200 with unauthenticated token. Considering invalid credentials');
             throw BadAuthenticationCredentialsException::bearer_token_auth($this->registry, $realm, $this->username);
         }
@@ -107,25 +107,14 @@ class BearerTokenStrategy implements AuthenticationStrategy
         $this->token = $token_payload['token'];
 
         $logger->info('Successfully authenticated to the registry');
-        DockerRegistryClient::create([
-            'registry' => $this->registry,
-            'container' => $this->container,
-            'issued_at' => $issued_at,
-            'expires_at' => $expires_at,
-            'validity_time' => $expires_in,
-            'access_token' => $this->token
-        ]);
+        Cache::put($this->cache_key, $this->token, $expires_at);
     }
 
     private function _reuse_existing_token(){
-        $existing_record = DockerRegistryClient::where('registry', $this->registry)
-            ->where('container', $this->container)
-            ->where('expires_at', '>', now())
-            ->orderBy('expires_at', 'desc')
-            ->first();
+        $existing_token = Cache::get($this->cache_key);
 
-        if($existing_record != null){
-            $this->token = $existing_record->access_token;
+        if($existing_token != null){
+            $this->token = $existing_token;
             return true;
         }
 
