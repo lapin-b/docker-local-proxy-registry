@@ -12,12 +12,30 @@ class ContainerManifest {
     public ?string $manifest_tag = null;
     public ?string $manifest_hash = null;
 
+    private ?array $decoded = null;
+
     public function __construct(){
         $this->fs = resolve('filesystem.disk');
     }
 
     public function get(): string {
         return $this->fs->get(self::manifest_path_for($this->container_path, $this->manifest_hash));
+    }
+
+    public function mimeType(): string {
+        return $this->decode()['mediaType'];
+    }
+
+    public function size(): int {
+        return $this->fs->size(self::manifest_path_for($this->container_path, $this->manifest_hash));
+    }
+
+    private function decode(): array {
+        if($this->decoded == null) {
+            $this->decoded = json_decode($this->get(), true);
+        }
+
+        return $this->decoded;
     }
 
     public static function make(string $container_name, string $manifest_reference) {
