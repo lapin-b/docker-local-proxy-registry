@@ -3,15 +3,11 @@
 namespace App\Http\Controllers\ProxyRegistry;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\ProxyRegistry\PushContainerLayerJob;
 use App\Lib\DockerClient\Client;
 use App\Lib\RegistryStorage\ContainerLayer;
 use App\Lib\RegistryStorage\RegistryStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Response;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class BlobsController extends Controller
 {
@@ -48,8 +44,9 @@ class BlobsController extends Controller
             ->stream(
                 function() use ($remote_layer_response, $blob_ref) {
                     $local_cached_layer = ContainerLayer::make($blob_ref);
-                    $remote_layer_stream = $remote_layer_response->toPsrResponse()->getBody();
+                    $local_cached_layer->create_folder();
 
+                    $remote_layer_stream = $remote_layer_response->toPsrResponse()->getBody();
                     $local_cached_layer_fh = fopen($local_cached_layer->absolute_path(), 'w');
                     while(!$remote_layer_stream->eof()){
                         $chunk = $remote_layer_stream->read(16*1024);
@@ -63,7 +60,7 @@ class BlobsController extends Controller
                 [
                     'Docker-Content-Digest' => $blob_ref,
                     'Content-Type' => 'application/octet-stream',
-                    'Content-Length' => $remote_layer_response->header('Content-Size'),
+                    'Content-Length' => $remote_layer_response->header('Content-Length'),
                     'Docker-Proxy-Cache' => 'MISS',
                 ]
             );

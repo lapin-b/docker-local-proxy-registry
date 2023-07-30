@@ -27,6 +27,10 @@ class ContainerLayer {
         return $this->fs->exists(self::storage_path($this->hash));
     }
 
+    public function create_folder() {
+        $this->fs->makeDirectory(self::storage_directory($this->hash));
+    }
+
     public static function make(string $blob_hash): self {
         $layer = new self;
         $layer->hash = RegistryStorage::strip_hash_algo($blob_hash);
