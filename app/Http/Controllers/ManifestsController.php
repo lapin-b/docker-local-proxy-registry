@@ -38,6 +38,7 @@ class ManifestsController extends Controller
         return response($manifest_content, 200, [
             'Docker-Content-Digest' => 'sha256:' . $manifest->manifest_hash,
             'Content-Type' => $manifest_mime_type,
+            'Content-Length' => $manifest->size()
         ]);
     }
 }
