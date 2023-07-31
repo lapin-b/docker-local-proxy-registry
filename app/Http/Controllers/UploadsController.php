@@ -47,6 +47,7 @@ class UploadsController extends Controller
                     'Location', 
                     route('blobs.get', ['container_ref' => $container_ref, 'blob_ref' => $docker_hash])
                 )
+                ->header('Content-Length', 0)
                 ->header('Docker-Content-Digest', $docker_hash);
         }
 
@@ -55,7 +56,8 @@ class UploadsController extends Controller
                 'Location',
                 route('blobs.process_upload', ['container_ref' => $container_ref, 'upload' => $upload])
             )
-            ->header('Range', "0-" . $upload->size())
+            ->header('Range', "0-" . $upload->size() + ftell($body))
+            ->header('Content-Length', 0)
             ->header('Docker-Upload-UUID', $upload->ulid);
     }
 
