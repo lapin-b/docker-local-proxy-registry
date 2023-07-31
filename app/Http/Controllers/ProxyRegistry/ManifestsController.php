@@ -11,8 +11,6 @@ use Illuminate\Support\Facades\Log;
 
 class ManifestsController extends Controller
 {
-    use ProcessesDockerManifests;
-
     public function __construct(
         private RegistryStorage $storage,
     ) {

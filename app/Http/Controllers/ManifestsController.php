@@ -8,8 +8,6 @@ use Illuminate\Http\Request;
 
 class ManifestsController extends Controller
 {
-    use ProcessesDockerManifests;
-
     public function __construct(
         private RegistryStorage $registry
     ) {
