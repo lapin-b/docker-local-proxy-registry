@@ -15,10 +15,6 @@ class UploadsController extends Controller
     }
 
     public function initiateUpload(Request $request, string $container_ref){
-        if($request->query('digest') != null){
-            return response('Monolithic uploads are not supported', 501);
-        }
-
         $upload = $this->storage->create_upload();
 
         return response('', 202)
@@ -26,6 +22,7 @@ class UploadsController extends Controller
                 'Location',
                 route('blobs.process_upload', ['container_ref' => $container_ref, 'upload' => $upload])
             )
+            ->header('Content-Length', 0)
             ->header('Range', '0-0')
             ->header('Docker-Upload-UUID', $upload->ulid);
     }
